@@ -63,15 +63,18 @@ if __name__ == '__main__':
     dataset = BaseDataset(config, 'data\processed\\test_dataset.txt', tokenizer)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=dataset.collate_fn)
     model = Seq2SeqModel(config)
+    model.load_state_dict(torch.load(config['data_path']['model_ckpt']))
     inference = Inference(config, model, device)
     sos_id = torch.tensor([[int(tokenizer.vocab['<sos>'])]], device=device)
     
     for i, batch in enumerate(dataloader):
         if i == 5: break
+        target = batch.tgt_ids.tolist()
         batch = inference.make_batch(batch.input_ids, sos_id)
         pred = inference.run_infer_on_batch(batch, device)
         
         print(pred)
+        print(target)
         print('===============')
         
         

@@ -25,7 +25,7 @@ class Tokenizer:
     
     def convert_to_ids(self, string_in):
         tokens = self.tokenize(string_in)
-        tokens = [self.vocab['<sos>']] + tokens + [self.vocab['<eos>']]
+        tokens = ['<sos>'] + tokens + ['<eos>']
         ids_out = [self.vocab.get(token, 1) for token in tokens]
         
         return ids_out

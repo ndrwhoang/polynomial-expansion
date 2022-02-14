@@ -69,19 +69,19 @@ class Seq2SeqModel(nn.Module):
         
         return embedding
     
-    def _forward(self, batch):
-        src_embedding = self.embedding(batch.input_ids)
-        tgt_embedding = self.embedding(batch.tgt_ids)
-        hidden = self.transformer(src = src_embedding,
-                                tgt = tgt_embedding,
-                                src_mask = batch.src_mask,
-                                tgt_mask = batch.tgt_mask,
-                                memory_mask = batch.memory_mask,
-                                )
-        logits = self.lm_head(hidden)
-        loss = self.loss_fn(logits, batch.tgt_ids)
+    # def _forward(self, batch):
+    #     src_embedding = self.embedding(batch.input_ids)
+    #     tgt_embedding = self.embedding(batch.tgt_ids)
+    #     hidden = self.transformer(src = src_embedding,
+    #                             tgt = tgt_embedding,
+    #                             src_mask = batch.src_mask,
+    #                             tgt_mask = batch.tgt_mask,
+    #                             memory_mask = batch.memory_mask,
+    #                             )
+    #     logits = self.lm_head(hidden)
+    #     loss = self.loss_fn(logits, batch.tgt_ids)
         
-        return ModelOutput(loss, logits)
+    #     return ModelOutput(loss, logits)
     
     def forward(self, batch, return_type='loss', memory=None):
         if return_type == 'loss':
