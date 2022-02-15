@@ -38,12 +38,12 @@ class Inference:
         
         for _ in range(int(self.config['model']['input_len'])):
             logits = self.model(batch, 'decode', memory)
-            next_token_id = torch.argmax(logits, dim=2)[:, -1].unsqueeze(0)
+            next_token_id = torch.argmax(logits, dim=2)[:, -1].unsqueeze(1)
             tgt_ids = torch.cat([batch.tgt_ids, next_token_id], dim=1)
             batch = self.make_batch(batch.input_ids, tgt_ids)
             batch.to_device(device)
             
-        generated_seq = batch.tgt_ids[0].tolist()
+        generated_seq = batch.tgt_ids.tolist()
         
         return generated_seq
             
@@ -75,6 +75,9 @@ if __name__ == '__main__':
         
         print(pred)
         print(target)
+        pred = [i for i in pred if i != 0]
+        if pred == target[0]:
+            print('correct')
         print('===============')
         
         

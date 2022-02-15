@@ -41,15 +41,6 @@ class Seq2SeqModel(nn.Module):
         self.decoder = nn.TransformerDecoder(decoder_layer=self.decoder_layer,
                                              num_layers=int(self.config['n_layers']))
         
-        
-        # self.transformer = nn.Transformer(nhead=int(self.config['n_attn_heads']),
-        #                                   d_model=int(self.config['hidden_dim']),
-        #                                   num_encoder_layers=int(self.config['n_layers']),
-        #                                   num_decoder_layers=int(self.config['n_layers']),
-        #                                   dropout=float(self.config['dropout']),
-        #                                   batch_first=True,
-        #                                   norm_first=self.config.getboolean('norm_first')
-        #                                   )
         self.lm_head = nn.Linear(int(self.config['hidden_dim']),
                                  int(self.config['vocab_size']))
         
@@ -68,20 +59,6 @@ class Seq2SeqModel(nn.Module):
         embedding = w_embedding + p_embedding
         
         return embedding
-    
-    # def _forward(self, batch):
-    #     src_embedding = self.embedding(batch.input_ids)
-    #     tgt_embedding = self.embedding(batch.tgt_ids)
-    #     hidden = self.transformer(src = src_embedding,
-    #                             tgt = tgt_embedding,
-    #                             src_mask = batch.src_mask,
-    #                             tgt_mask = batch.tgt_mask,
-    #                             memory_mask = batch.memory_mask,
-    #                             )
-    #     logits = self.lm_head(hidden)
-    #     loss = self.loss_fn(logits, batch.tgt_ids)
-        
-    #     return ModelOutput(loss, logits)
     
     def forward(self, batch, return_type='loss', memory=None):
         if return_type == 'loss':
@@ -135,13 +112,18 @@ def model_test(config):
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f'Number of trainable params: {total_params}')
     
-    # for i, batch in enumerate(dataloader):
-    #     if i == 5: break
-    #     batch.to_device(device)
-    #     out = model(batch, return_type='loss')
-    #     print(out)
-    #     print(out.size())
-    #     print('==============================')
+    # with open('network.txt', 'w') as f:
+    #     for name, param in model.named_parameters():
+    #         if param.requires_grad:
+    #             f.write(name + ' ' + str(param.numel()) + '\n')
+    
+    for i, batch in enumerate(dataloader):
+        if i == 5: break
+        batch.to_device(device)
+        out = model(batch, return_type='loss')
+        print(out)
+        print(out.size())
+        print('==============================')
     
 
 if __name__ == '__main__':
