@@ -5,13 +5,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.model.model_mixin import PredictionMixin
+
 @dataclass
 class ModelOutput:
     # Output from model
     loss: torch.Tensor
     logits: torch.Tensor
 
-class Seq2SeqModel(nn.Module):
+class Seq2SeqModel(nn.Module, PredictionMixin):
     def __init__(self, config):
         super(Seq2SeqModel, self).__init__()
         self.config = config['model']
@@ -43,6 +45,10 @@ class Seq2SeqModel(nn.Module):
         
         self.lm_head = nn.Linear(int(self.config['hidden_dim']),
                                  int(self.config['vocab_size']))
+        
+    @property
+    def device(self):
+        return next(self.parameters()).device
         
     def loss_fn(self, logits, tgt_ids):
         shift_logits = logits[..., :-1, :].contiguous()

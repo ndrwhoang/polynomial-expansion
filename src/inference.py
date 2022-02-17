@@ -46,17 +46,12 @@ class Inference:
         generated_seq = batch.tgt_ids.tolist()
         
         return generated_seq
-            
-        
-if __name__ == '__main__':
-    import configparser
+
+def test_inference_class(config):
     from torch.utils.data import DataLoader
     from src.model.transformer import Seq2SeqModel
     from src.dataset.tokenizer import Tokenizer
     from src.dataset.base_dataset import BaseDataset
-    
-    config = configparser.ConfigParser()
-    config.read('configs\config.cfg')
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = Tokenizer(config)
@@ -79,6 +74,49 @@ if __name__ == '__main__':
         if pred == target[0]:
             print('correct')
         print('===============')
+        
+def test_inference_mixin(config):
+    from torch.utils.data import DataLoader
+    from src.model.transformer import Seq2SeqModel
+    from src.dataset.tokenizer import Tokenizer
+    from src.dataset.base_dataset import BaseDataset
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    tokenizer = Tokenizer(config)
+    dataset = BaseDataset(config, 'data\processed\\test_dataset.txt', tokenizer)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=dataset.collate_fn)
+    model = Seq2SeqModel(config)
+    model.load_state_dict(torch.load(config['data_path']['model_ckpt']))
+    
+    for i, batch in enumerate(dataloader):
+        if i == 5: break
+        target = batch.tgt_ids.tolist()
+        pred = model.generate_from_batch(batch.input_ids)
+        
+        for tgt, pred in zip(target, pred):
+            pred = [i for i in pred if i != 0]
+            tgt = [i for i in tgt if i != 0]
+            
+            print(pred)
+            print(tgt)
+            print('============')
+    
+        
+if __name__ == '__main__':
+    import configparser
+    from torch.utils.data import DataLoader
+    from src.model.transformer import Seq2SeqModel
+    from src.dataset.tokenizer import Tokenizer
+    from src.dataset.base_dataset import BaseDataset
+    
+    config = configparser.ConfigParser()
+    config.read('configs\config.cfg')
+    
+    test_inference_mixin(config)
+    
+    
+    
+    
         
         
         

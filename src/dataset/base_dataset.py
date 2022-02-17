@@ -53,7 +53,7 @@ class BaseDataset(Dataset):
         with open(data_path, 'r') as f:
             data = f.read().splitlines()
         
-        # data = data[:200]
+        data = data[:200]
             
         return data
     

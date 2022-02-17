@@ -5,6 +5,7 @@ In the `main.py` file there are 2 functions, use `run_train()` to start the trai
 I went with the 'tried and true' transformer encoder-decoder stack and push the number of parameters just below the 5M limit (add as many heads and layers as possible, i.e. making the model as deep as possible, then make the intermediary as wide as possible).
 
 # Data split 
+The raw dataset should be placed in `data\raw\` (or change to alternative location with `raw_dataset` in config file) and be split using `src\dataset\data_split.py`.
 Train set: 640K samples  
 Valid set: 160K samples
 Test set: 200k samples  
