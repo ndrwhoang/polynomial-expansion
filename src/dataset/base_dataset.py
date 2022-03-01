@@ -1,15 +1,14 @@
-from distutils.command.config import config
 import re
 import os
 import logging
 import configparser
 from tqdm import tqdm
-from dataclasses import dataclass
+from typing import NamedTuple
 
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-from torch.nn import Transformer
 
 from src.dataset.tokenizer import Tokenizer
 
@@ -17,26 +16,16 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-@dataclass
-class Batch:
-    input_ids: torch.Tensor
-    tgt_ids: torch.Tensor
-    src_mask: torch.Tensor
-    tgt_mask: torch.Tensor
-    memory_mask: torch.Tensor
-    src_key_padding_mask: torch.Tensor
-    tgt_key_padding_mask: torch.Tensor
-    memory_key_padding_mask: torch.Tensor
-
-    def to_device(self, device):
-        self.input_ids = self.input_ids.to(device)
-        self.tgt_ids = self.tgt_ids.to(device)
-        self.src_mask = self.src_mask.to(device)
-        self.tgt_mask = self.tgt_mask.to(device)
-        self.memory_mask = self.memory_mask.to(device)
-        self.src_key_padding_mask = self.src_key_padding_mask.to(device)
-        self.tgt_key_padding_mask = self.tgt_key_padding_mask.to(device)
-        self.memory_key_padding_mask = self.memory_key_padding_mask.to(device)
+class Batch(NamedTuple):
+        input_ids: torch.Tensor
+        tgt_ids: torch.Tensor
+        src_mask: torch.Tensor
+        tgt_mask: torch.Tensor
+        memory_mask: torch.Tensor
+        src_key_padding_mask: torch.Tensor
+        tgt_key_padding_mask: torch.Tensor
+        memory_key_padding_mask: torch.Tensor
+    
 
 class BaseDataset(Dataset):
     def __init__(self, config, data_path, tokenizer):
@@ -53,7 +42,7 @@ class BaseDataset(Dataset):
         with open(data_path, 'r') as f:
             data = f.read().splitlines()
         
-        data = data[:200]
+        # data = data[:200]
             
         return data
     
@@ -86,9 +75,14 @@ class BaseDataset(Dataset):
     def collate_fn(self, batch):
         input_ids, output_ids = zip(*batch)
         
+        # Pad all to max len, this helps with training on TPU
+        # If use transformer tokenizer, use the built in tokenizer pad instead of this hack
+        # https://stackoverflow.com/questions/67819858/enforce-pad-sequence-to-a-certain-length
+        # input_ids[0] = nn.ConstantPad1d((0, int(self.config['data']['max_len'])-input_ids[0].shape[0]), 0)(input_ids[0])
         input_ids = pad_sequence(input_ids, batch_first=True)
         src_mask = torch.zeros((input_ids.size(1), input_ids.size(1))).type(torch.bool)
         src_key_padding_mask = input_ids == 0
+        # output_ids[0] = nn.ConstantPad1d((0, int(self.config['data']['max_len'])-input_ids[0].shape[0]), 0)(output_ids[0])
         output_ids = pad_sequence(output_ids, batch_first=True)
         tgt_mask = self._generate_square_subsequent_mask(output_ids.size(1))
         tgt_key_padding_mask = output_ids == 0

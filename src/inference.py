@@ -87,6 +87,7 @@ def test_inference_mixin(config):
     dataloader = DataLoader(dataset, batch_size=64, shuffle=False, collate_fn=dataset.collate_fn)
     model = Seq2SeqModel(config)
     model.load_state_dict(torch.load(config['data_path']['model_ckpt']))
+    model.eval()
     
     for i, batch in enumerate(dataloader):
         if i == 5: break

@@ -1,4 +1,5 @@
 import logging
+from typing import NamedTuple
 from dataclasses import dataclass
 
 import torch
@@ -7,8 +8,13 @@ import torch.nn.functional as F
 
 from src.model.model_mixin import PredictionMixin
 
-@dataclass
-class ModelOutput:
+# @dataclass
+# class ModelOutput:
+#     # Output from model
+#     loss: torch.Tensor
+#     logits: torch.Tensor
+    
+class ModelOutput(NamedTuple):
     # Output from model
     loss: torch.Tensor
     logits: torch.Tensor
