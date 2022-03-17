@@ -12,7 +12,7 @@ Test set: 200k samples
 
 # Training
 Batch size: 64  
-Lr: 1e-3
+Lr: 1e-3            
 Scheduler: None  
 Save checkpoint at lowest validation loss   
 
