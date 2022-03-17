@@ -87,6 +87,8 @@ class Seq2SeqModel(nn.Module, PredictionMixin):
             return memory
         
         elif return_type == 'decode':
+            if memory == None:
+                memory = self._encode(batch)
             logits = self._decode(batch, memory)
             
             return logits

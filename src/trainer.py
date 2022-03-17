@@ -119,8 +119,10 @@ class Trainer:
             if val_loss < best_val_loss:
                 logger.info(f'New best validatoin loss at {val_loss:.4f}, saving checkpoint')
                 best_val_loss = val_loss
+                self.accelerator.wait_for_everyone()
+                unwrapped_model = self.accelerator.unwrap_model(self.model)
                 ckpt_path = os.path.join(self.config['training']['model_dir'], 'seq2seq_256_8_3.pt')
-                # torch.save(self.model.state_dict(), ckpt_path)
+                # torch.save(unwrapped_model.state_dict(), ckpt_path)
                 logger.info(f'New checkpoint saved at {ckpt_path}')
         
     def run_validation(self):
