@@ -8,7 +8,6 @@ class PredictionMixin:
     def generate_from_batch(self, input_ids, decode_strat='greedy'):
         sos_id = torch.tensor([2]*input_ids.size(0), device=self.device).unsqueeze(1)
         batch = self._prepare_batch(input_ids, sos_id)
-        batch.to_device(self.device)
         
         memory = self(batch, return_type='encode')
         

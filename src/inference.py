@@ -1,79 +1,73 @@
-from pyparsing import col
-from tqdm import tqdm 
+from tqdm.auto import tqdm 
+import os
+import random 
+import numpy as np
+import logging
 
-import torch 
-from torch.nn.utils.rnn import pad_sequence
+import torch
+from torch.utils.data import DataLoader
 
-from src.dataset.tokenizer import Tokenizer
-from src.dataset.base_dataset import Batch
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO) 
 
 class Inference:
-    def __init__(self, config, model, device):
+    def __init__(self, config, accelerator, model, dataset, model_path=None):
+        #TODO: make static method to predict 1 sample
         self.config = config
         self.model = model
-        self.device = device
+        self.accelerator = accelerator
+        self.tokenizer = dataset.tokenizer
+        
+        # Setup
+        self._set_seed()
+        self._init_model(model_path)
+        self._init_dataloader(dataset)
+    
+    def _set_seed(self):
+        self.seed = int(self.config['general']['seed'])
+        torch.manual_seed(self.seed)
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+    
+    def _init_model(self, model_path):
+        if model_path:
+            path = os.path.join(*model_path.split('\\'))
+            self.model.load_state_dict(torch.load(path))
+        
         self.model.eval()
-        self.model.to(self.device)
-        self.tokenizer = Tokenizer(self.config)
-    
-    def _generate_square_subsequent_mask(self, sz):
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        self.model = self.accelerator.prepare(self.model)
         
-        return mask
-    
-    def make_batch(self, input_ids, output_ids):
-        src_mask = torch.zeros((input_ids.size(1), input_ids.size(1))).type(torch.bool)
-        src_key_padding_mask = input_ids == 0
-        tgt_mask = self._generate_square_subsequent_mask(output_ids.size(1))
-        tgt_key_padding_mask = output_ids == 0
-        memory_mask = torch.zeros((output_ids.size(1), input_ids.size(1))).type(torch.bool) 
+    def _init_dataloader(self, dataset):
+        loader = DataLoader(dataset,
+                            batch_size=int(self.config['training']['test_bsz']),
+                            collate_fn=dataset.collate_fn,
+                            shuffle=False,
+                            drop_last=False
+                            )
+        self.loader = self.accelerator.prepare(loader)
         
-        return Batch(input_ids, output_ids, src_mask, tgt_mask, memory_mask,
-                     src_key_padding_mask, tgt_key_padding_mask, src_key_padding_mask)
+    def run_test(self):
+        pbar = tqdm(enumerate(self.loader), total=len(self.loader))
+        n_right, n_sample = 0, 0
+        bsz = int(self.config['training']['test_bsz'])
+        out = {'correct': [], 'incorrect': []}
         
-    def run_infer_on_batch(self, batch, device):
-        batch.to_device(device)
-        memory = self.model(batch, return_type='encode')  
-        
-        for _ in range(int(self.config['model']['input_len'])):
-            logits = self.model(batch, 'decode', memory)
-            next_token_id = torch.argmax(logits, dim=2)[:, -1].unsqueeze(1)
-            tgt_ids = torch.cat([batch.tgt_ids, next_token_id], dim=1)
-            batch = self.make_batch(batch.input_ids, tgt_ids)
-            batch.to_device(device)
+        for i, batch in pbar:
+            targets = batch.tgt_ids.tolist()
+            preds = self.model.generate_from_batch(batch.input_ids)
+            n_sample += bsz
             
-        generated_seq = batch.tgt_ids.tolist()
-        
-        return generated_seq
-
-def test_inference_class(config):
-    from torch.utils.data import DataLoader
-    from src.model.transformer import Seq2SeqModel
-    from src.dataset.tokenizer import Tokenizer
-    from src.dataset.base_dataset import BaseDataset
-    
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    tokenizer = Tokenizer(config)
-    dataset = BaseDataset(config, 'data\processed\\test_dataset.txt', tokenizer)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=dataset.collate_fn)
-    model = Seq2SeqModel(config)
-    model.load_state_dict(torch.load(config['data_path']['model_ckpt']))
-    inference = Inference(config, model, device)
-    sos_id = torch.tensor([[int(tokenizer.vocab['<sos>'])]], device=device)
-    
-    for i, batch in enumerate(dataloader):
-        if i == 5: break
-        target = batch.tgt_ids.tolist()
-        batch = inference.make_batch(batch.input_ids, sos_id)
-        pred = inference.run_infer_on_batch(batch, device)
-        
-        print(pred)
-        print(target)
-        pred = [i for i in pred if i != 0]
-        if pred == target[0]:
-            print('correct')
-        print('===============')
+            
+            for target, pred in zip(targets, preds):
+                pred = [i for i in pred if i != 0]
+                target = [i for i in target if i != 0]
+                
+                if pred == target:
+                    n_right += 1
+                    
+        logger.info(f' Test set accuracy {n_right/n_sample}')
+            
         
 def test_inference_mixin(config):
     from torch.utils.data import DataLoader
