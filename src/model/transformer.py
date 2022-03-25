@@ -114,15 +114,13 @@ def model_test(config):
     from src.dataset.base_dataset import BaseDataset
     from src.dataset.tokenizer import Tokenizer
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = Tokenizer(config)
-    dataset = BaseDataset(config, 'data\processed\\val_dataset.txt', tokenizer)
+    dataset = BaseDataset(config, 'data\processed\\train_subset.txt', tokenizer)
     dataloader = DataLoader(dataset, 
                             batch_size=4,
                             shuffle=False,
                             collate_fn=dataset.collate_fn)
     model = Seq2SeqModel(config)
-    model.to(device)
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f'Number of trainable params: {total_params}')
     
@@ -133,10 +131,14 @@ def model_test(config):
     
     for i, batch in enumerate(dataloader):
         if i == 5: break
-        batch.to_device(device)
-        out = model(batch, return_type='loss')
-        print(out)
-        print(out.size())
+        loss = model(batch, return_type='loss')
+        print(loss)
+        encode_out = model(batch, return_type='encode')
+        print(encode_out.requires_grad)
+        print(encode_out.size())
+        decode_out = model(batch, return_type='decode', memory=encode_out)
+        print(decode_out.requires_grad)
+        print(decode_out.size())
         print('==============================')
     
 

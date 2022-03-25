@@ -14,6 +14,7 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO) 
 
 class Trainer:
     def __init__(self, config, accelerator, model, train_dataset, dev_dataset=None):
@@ -109,7 +110,8 @@ class Trainer:
                 # step
                 if i % self.n_grad_accumulation_steps == 0:
                     self.optimizer.step()
-                    self.lr_scheduler.step()
+                    if not self.accelerator.optimizer_step_was_skipped:
+                        self.lr_scheduler.step()
                     self.model.zero_grad(set_to_none=True)
                 
                 pbar.set_description(f'(Training) Epoch: {epoch} - Steps: {i}/{len(self.train_loader)} - Loss: {batch_loss:.4f}')
@@ -140,16 +142,13 @@ class Trainer:
         return epoch_loss
        
     def _training_step(self, batch):
-        # batch.to_device(self.device)
         loss = self.model(batch)
-        # loss.backward()
         self.accelerator.backward(loss)
         
         return loss.detach()
     
     @torch.no_grad()
     def _prediction_step(self, batch):
-        # batch.to_device(self.device)
         loss = self.model(batch)
         
         return loss.detach()

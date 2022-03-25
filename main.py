@@ -1,20 +1,37 @@
 import configparser
 import os
+import logging
 
-def run_train(config):
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+def run_train(config, train_path, val_path):
     from src.dataset.base_dataset import BaseDataset
     from src.dataset.tokenizer import Tokenizer
     from src.model.transformer import Seq2SeqModel
     from src.trainer import Trainer
+    
+    from accelerate import Accelerator
+    
+    # Init Huggingface training helper
+    accelerator = Accelerator(fp16=config['training'].getboolean('fp16'))
+    
+    # Only log on one process
+    logger.setLevel(logging.INFO if accelerator.is_local_main_process else logging.ERROR) 
+    logger.info('Accelerator settings')
+    logger.info(accelerator.state)
+    
+    # Dataset, Model, Trainer init
     tokenizer = Tokenizer(config)
-    val_dataset = BaseDataset(config, 'data\processed\\val_dataset.txt', tokenizer)
-    train_dataset = BaseDataset(config, 'data\processed\\train_dataset.txt', tokenizer)
+    val_dataset = BaseDataset(config, val_path, tokenizer)
+    train_dataset = BaseDataset(config, train_path, tokenizer)
     model = Seq2SeqModel(config)
     
-    trainer = Trainer(config, model, train_dataset, val_dataset)
+    trainer = Trainer(config, accelerator, model, train_dataset, val_dataset)
     trainer.run_train()
 
-def run_test(config):
+def run_test(config, test_path):
     import torch
     from tqdm import tqdm
     from torch.utils.data import DataLoader
@@ -26,7 +43,7 @@ def run_test(config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     bsz = int(config['training']['test_bsz'])
     tokenizer = Tokenizer(config)
-    dataset = BaseDataset(config, 'data\processed\\test_dataset.txt', tokenizer)
+    dataset = BaseDataset(config, test_path, tokenizer)
     dataloader = DataLoader(dataset, batch_size=bsz, shuffle=False, drop_last=True, collate_fn=dataset.collate_fn)
     model = Seq2SeqModel(config)
     model.load_state_dict(torch.load(config['data_path']['model_ckpt']))
@@ -57,8 +74,13 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read(os.path.join('configs', 'config.cfg'))
     
-    # run_train(config)
-    run_test(config)
+    train_path = config['data_path']['train_dataset']
+    val_path = config['data_path']['val_dataset']
+    test_path = config['data_path']['test_dataset']
+    subset_path = config['data_path']['train_subset']    
+    
+    run_train(config, subset_path, subset_path)
+    # run_test(config, test_path)
     
     
     

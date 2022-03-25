@@ -100,7 +100,7 @@ if __name__ == '__main__':
     config.read(os.path.join('configs', 'config.cfg'))
     
     tokenizer = Tokenizer(config)
-    dataset = BaseDataset(config, 'data\processed\\val_dataset.txt', tokenizer)
+    dataset = BaseDataset(config, 'data\processed\\train_subset.txt', tokenizer)
     dataloader = DataLoader(dataset,
                             batch_size=2, 
                             shuffle=False, 
